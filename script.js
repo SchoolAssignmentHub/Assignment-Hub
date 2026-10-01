@@ -64,8 +64,38 @@ function getAudioContext() {
             )();
     }
 
+
+    if (audioContext.state === "suspended") {
+
+        audioContext.resume();
+
+    }
+
+
     return audioContext;
 }
+
+
+// Wake up audio after the first user interaction
+
+document.addEventListener(
+    "click",
+    () => {
+
+        const audio =
+            getAudioContext();
+
+        if (audio.state === "suspended") {
+
+            audio.resume();
+
+        }
+
+    },
+    {
+        once: true
+    }
+);
 
 
 function playButtonSound() {
