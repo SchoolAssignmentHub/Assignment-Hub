@@ -196,7 +196,7 @@ function playButtonSound() {
     );
 
     gain.gain.setValueAtTime(
-        0.05,
+        0.3,
         audio.currentTime
     );
 
@@ -244,7 +244,7 @@ function playCloseSound() {
     );
 
     gain.gain.setValueAtTime(
-        0.04,
+        0.24,
         audio.currentTime
     );
 
@@ -292,7 +292,7 @@ function playDeleteSound() {
     );
 
     gain.gain.setValueAtTime(
-        0.04,
+        0.24,
         audio.currentTime
     );
 
@@ -340,7 +340,7 @@ function playHoverSound() {
     );
 
     gain.gain.setValueAtTime(
-        0.008,
+        0.2,
         audio.currentTime
     );
 
@@ -450,7 +450,7 @@ function playSubmitOffSound() {
     );
 
     gain.gain.setValueAtTime(
-        0.06,
+        0.36,
         audio.currentTime
     );
 
