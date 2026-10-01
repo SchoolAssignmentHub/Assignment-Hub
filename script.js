@@ -1,8 +1,14 @@
-let assignments =
-    JSON.parse(localStorage.getItem("assignments")) || [];
+let assignments = [];
 
 let selectedAssignmentId = null;
 let editingAssignmentId = null;
+
+
+/* =========================
+   ELEMENTS
+========================= */
+
+const userGreeting = document.getElementById("userGreeting");
 
 const addAssignmentBtn =
     document.getElementById("addAssignmentBtn");
@@ -48,10 +54,73 @@ const submittedCheckbox =
 
 
 /* =========================
+   USER GREETING
+========================= */
+
+async function loadUserProfile(user) {
+
+    if (!userGreeting || !user) return;
+
+    const {
+        data,
+        error
+    } = await supabaseClient
+        .from("profiles")
+        .select("display_name")
+        .eq("id", user.id)
+        .single();
+
+
+    if (error) {
+
+        console.error(
+            "Error loading user profile:",
+            error
+        );
+
+        console.log(
+            "Logged-in user ID:",
+            user.id
+        );
+
+        userGreeting.textContent =
+            "Hello";
+
+        return;
+    }
+
+
+    console.log(
+        "Profile loaded:",
+        data
+    );
+
+
+    userGreeting.textContent =
+        `Hello, ${data.display_name}`;
+}
+
+
+/* =========================
+   SUPABASE
+========================= */
+
+const SUPABASE_URL = "https://vizbglpdvnkilmgzvahr.supabase.co";
+
+const SUPABASE_KEY = "sb_publishable_vmm2eS2OuYxCIh0cF2j0CA_EHCS9ILL";
+
+const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
+
+/* =========================
    AUDIO
 ========================= */
 
 let audioContext = null;
+
 
 function getAudioContext() {
 
@@ -65,7 +134,9 @@ function getAudioContext() {
     }
 
 
-    if (audioContext.state === "suspended") {
+    if (
+        audioContext.state === "suspended"
+    ) {
 
         audioContext.resume();
 
@@ -76,7 +147,7 @@ function getAudioContext() {
 }
 
 
-// Wake up audio after the first user interaction
+/* Wake up audio after first interaction */
 
 document.addEventListener(
     "click",
@@ -85,7 +156,9 @@ document.addEventListener(
         const audio =
             getAudioContext();
 
-        if (audio.state === "suspended") {
+        if (
+            audio.state === "suspended"
+        ) {
 
             audio.resume();
 
@@ -99,6 +172,7 @@ document.addEventListener(
 
 
 function playButtonSound() {
+
     const audio =
         getAudioContext();
 
@@ -400,19 +474,6 @@ function playSubmitOffSound() {
 
 
 /* =========================
-   STORAGE
-========================= */
-
-function saveAssignments() {
-
-    localStorage.setItem(
-        "assignments",
-        JSON.stringify(assignments)
-    );
-}
-
-
-/* =========================
    ADD ASSIGNMENT
 ========================= */
 
@@ -491,6 +552,7 @@ submittedCheckbox.addEventListener(
         } else {
 
             playSubmitOffSound();
+
         }
     }
 );
@@ -502,9 +564,10 @@ submittedCheckbox.addEventListener(
 
 assignmentForm.addEventListener(
     "submit",
-    (event) => {
+    async (event) => {
 
         event.preventDefault();
+
 
         const name =
             document
@@ -542,11 +605,34 @@ assignmentForm.addEventListener(
         const submitted =
             submittedCheckbox.checked;
 
+
         let newlySubmitted =
             false;
 
 
-        /* EDIT EXISTING */
+        /* GET LOGGED-IN USER */
+
+        const {
+            data: {
+                user
+            }
+        } =
+            await supabaseClient.auth.getUser();
+
+
+        if (!user) {
+
+            alert(
+                "You must be logged in to save an assignment."
+            );
+
+            return;
+        }
+
+
+        /* =========================
+           EDIT EXISTING
+        ========================= */
 
         if (
             editingAssignmentId !== null
@@ -559,68 +645,184 @@ assignmentForm.addEventListener(
                         editingAssignmentId
                 );
 
-            if (assignment) {
 
-                if (
-                    !assignment.submitted &&
-                    submitted
-                ) {
+            if (!assignment) {
 
-                    newlySubmitted =
-                        true;
-                }
-
-                assignment.name =
-                    name;
-
-                assignment.subject =
-                    subject;
-
-                assignment.dueDate =
-                    dueDate;
-
-                assignment.gradeWeight =
-                    gradeWeight;
-
-                assignment.progress =
-                    progress;
-
-                assignment.submitted =
-                    submitted;
+                return;
             }
 
 
-        /* CREATE NEW */
+            if (
+                !assignment.submitted &&
+                submitted
+            ) {
+
+                newlySubmitted =
+                    true;
+            }
+
+
+            const {
+                error
+            } =
+                await supabaseClient
+                    .from("assignments")
+                    .update({
+
+                        name:
+                            name,
+
+                        subject:
+                            subject,
+
+                        due_date:
+                            dueDate,
+
+                        grade_weight:
+                            gradeWeight,
+
+                        progress:
+                            progress,
+
+                        submitted:
+                            submitted
+
+                    })
+                    .eq(
+                        "id",
+                        assignment.supabaseId
+                    )
+                    .eq(
+                        "user_id",
+                        user.id
+                    );
+
+
+            if (error) {
+
+                console.error(
+                    "Error updating assignment:",
+                    error
+                );
+
+                alert(
+                    "The assignment could not be updated."
+                );
+
+                return;
+            }
+
+
+            /* UPDATE LOCAL DATA */
+
+            assignment.name =
+                name;
+
+            assignment.subject =
+                subject;
+
+            assignment.dueDate =
+                dueDate;
+
+            assignment.gradeWeight =
+                gradeWeight;
+
+            assignment.progress =
+                progress;
+
+            assignment.submitted =
+                submitted;
+
+
+        /* =========================
+           CREATE NEW
+        ========================= */
 
         } else {
+
+            const {
+                data,
+                error
+            } =
+                await supabaseClient
+                    .from("assignments")
+                    .insert({
+
+                        user_id:
+                            user.id,
+
+                        name:
+                            name,
+
+                        subject:
+                            subject,
+
+                        due_date:
+                            dueDate,
+
+                        grade_weight:
+                            gradeWeight,
+
+                        progress:
+                            progress,
+
+                        submitted:
+                            submitted
+
+                    })
+                    .select()
+                    .single();
+
+
+            if (error) {
+
+                console.error(
+                    "Error creating assignment:",
+                    error
+                );
+
+                alert(
+                    "The assignment could not be saved to the cloud."
+                );
+
+                return;
+            }
+
 
             const newAssignment = {
 
                 id:
-                    Date.now(),
+                    Date.now() +
+                    Math.random(),
+
+                supabaseId:
+                    data.id,
 
                 name:
-                    name,
+                    data.name,
 
                 subject:
-                    subject,
+                    data.subject,
 
                 dueDate:
-                    dueDate,
+                    data.due_date,
 
                 gradeWeight:
-                    gradeWeight,
+                    data.grade_weight,
 
                 progress:
-                    progress,
+                    data.progress,
 
                 submitted:
-                    submitted
+                    data.submitted
+
             };
+
 
             assignments.push(
                 newAssignment
             );
+
 
             if (submitted) {
 
@@ -630,7 +832,9 @@ assignmentForm.addEventListener(
         }
 
 
-        saveAssignments();
+        /* =========================
+           UPDATE DASHBOARD
+        ========================= */
 
         renderAssignments();
 
@@ -642,6 +846,7 @@ assignmentForm.addEventListener(
         } else {
 
             playButtonSound();
+
         }
 
 
@@ -981,6 +1186,7 @@ function renderAssignments() {
                         getDaysUntilDue(
                             assignment
                         );
+
 
                     /*
                        Submitted assignments
@@ -1331,10 +1537,77 @@ editAssignmentBtn.addEventListener(
 
 deleteAssignmentBtn.addEventListener(
     "click",
-    () => {
+    async () => {
 
         playDeleteSound();
 
+
+        const assignment =
+            assignments.find(
+                item =>
+                    item.id ===
+                    selectedAssignmentId
+            );
+
+
+        if (!assignment) {
+
+            return;
+        }
+
+
+        const {
+            data: {
+                user
+            }
+        } =
+            await supabaseClient.auth.getUser();
+
+
+        if (!user) {
+
+            alert(
+                "You must be logged in to delete an assignment."
+            );
+
+            return;
+        }
+
+
+        /* DELETE FROM SUPABASE */
+
+        const {
+            error
+        } =
+            await supabaseClient
+                .from("assignments")
+                .delete()
+                .eq(
+                    "id",
+                    assignment.supabaseId
+                )
+                .eq(
+                    "user_id",
+                    user.id
+                );
+
+
+        if (error) {
+
+            console.error(
+                "Error deleting assignment:",
+                error
+            );
+
+            alert(
+                "The assignment could not be deleted."
+            );
+
+            return;
+        }
+
+
+        /* DELETE LOCALLY */
 
         assignments =
             assignments.filter(
@@ -1343,8 +1616,6 @@ deleteAssignmentBtn.addEventListener(
                     selectedAssignmentId
             );
 
-
-        saveAssignments();
 
         renderAssignments();
 
@@ -1622,12 +1893,6 @@ document.addEventListener(
     }
 );
 
-
-/* =========================
-   START APP
-========================= */
-
-renderAssignments();
 
 /* =========================
    COMPLETED HISTORY
@@ -2032,8 +2297,6 @@ importBackupInput.addEventListener(
                         backupData.assignments;
 
 
-                    saveAssignments();
-
                     renderAssignments();
 
                     settingsModal.style.display =
@@ -2046,6 +2309,11 @@ importBackupInput.addEventListener(
 
 
                 } catch (error) {
+
+                    console.error(
+                        "Backup import error:",
+                        error
+                    );
 
                     alert(
                         "The backup file could not be read."
@@ -2063,3 +2331,338 @@ importBackupInput.addEventListener(
             "";
     }
 );
+
+
+/* =========================
+   AUTHENTICATION
+========================= */
+
+const authScreen =
+    document.getElementById(
+        "authScreen"
+    );
+
+const authForm =
+    document.getElementById(
+        "authForm"
+    );
+
+const authEmail =
+    document.getElementById(
+        "authEmail"
+    );
+
+const authPassword =
+    document.getElementById(
+        "authPassword"
+    );
+
+const authSubmit =
+    document.getElementById(
+        "authSubmit"
+    );
+
+const authMessage =
+    document.getElementById(
+        "authMessage"
+    );
+
+const authTitle =
+    document.getElementById(
+        "authTitle"
+    );
+
+
+/* =========================
+   LOGIN ONLY
+========================= */
+
+authForm.addEventListener(
+    "submit",
+    async (event) => {
+
+        event.preventDefault();
+
+
+        const email =
+            authEmail.value.trim();
+
+        const password =
+            authPassword.value;
+
+
+        authMessage.textContent =
+            "Please wait...";
+
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient.auth.signInWithPassword({
+
+                email:
+                    email,
+
+                password:
+                    password
+
+            });
+
+
+        console.log(
+            "LOGIN DATA:",
+            data
+        );
+
+        console.log(
+            "LOGIN ERROR:",
+            error
+        );
+
+
+        if (error) {
+
+            authMessage.textContent =
+                error.message;
+
+            return;
+        }
+
+
+        authMessage.textContent =
+            "";
+    }
+);
+
+
+/* =========================
+   CHECK AUTH
+========================= */
+
+async function checkAuth() {
+
+    const {
+        data: { session }
+    } = await supabase.auth.getSession();
+
+    if (session) {
+
+        authScreen.style.display = "none";
+
+        await loadUserProfile(session.user);
+
+        await loadAssignmentsFromSupabase();
+
+    } else {
+
+        authScreen.style.display = "flex";
+
+        userGreeting.textContent = "Hello";
+
+    }
+}
+
+
+/* =========================
+   AUTH STATE CHANGES
+========================= */
+
+supabaseClient.auth.onAuthStateChange(
+    (_event, session) => {
+
+        if (session) {
+
+            authScreen.style.display =
+                "none";
+
+            loadUserProfile(session.user);
+
+            loadAssignmentsFromSupabase();
+
+        } else {
+
+            authScreen.style.display =
+                "flex";
+
+            userGreeting.textContent =
+                "Hello";
+        }
+    }
+);
+
+
+/* =========================
+   LOAD ASSIGNMENTS
+========================= */
+
+async function loadAssignmentsFromSupabase() {
+
+    const {
+        data: {
+            user
+        }
+    } =
+        await supabaseClient.auth.getUser();
+
+
+    if (!user) {
+
+        return;
+    }
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from("assignments")
+            .select("*")
+            .eq(
+                "user_id",
+                user.id
+            )
+            .order(
+                "due_date",
+                {
+                    ascending:
+                        true
+                }
+            );
+
+
+    if (error) {
+
+        console.error(
+            "Error loading assignments:",
+            error
+        );
+
+        return;
+    }
+
+
+    assignments =
+        data.map(
+            assignment => ({
+
+                id:
+                    Date.now() +
+                    Math.random(),
+
+                supabaseId:
+                    assignment.id,
+
+                name:
+                    assignment.name,
+
+                subject:
+                    assignment.subject,
+
+                dueDate:
+                    assignment.due_date,
+
+                gradeWeight:
+                    assignment.grade_weight,
+
+                progress:
+                    assignment.progress,
+
+                submitted:
+                    assignment.submitted
+
+            })
+        );
+
+
+    renderAssignments();
+}
+
+
+/* =========================
+   LOG OUT
+========================= */
+
+const logoutBtn =
+    document.getElementById(
+        "logoutBtn"
+    );
+
+
+logoutBtn.addEventListener(
+    "click",
+    async () => {
+
+        playButtonSound();
+
+
+        const {
+            error
+        } =
+            await supabaseClient.auth.signOut();
+
+
+        if (error) {
+
+            console.error(
+                "Logout error:",
+                error
+            );
+
+            alert(
+                "Could not log out."
+            );
+
+            return;
+        }
+
+
+        /* CLEAR CURRENT ACCOUNT DATA */
+
+        assignments =
+            [];
+
+
+        /* CLEAR LOGIN FIELDS */
+
+        authEmail.value =
+            "";
+
+        authPassword.value =
+            "";
+
+        authMessage.textContent =
+            "";
+
+
+        /* CLOSE MODALS */
+
+        settingsModal.style.display =
+            "none";
+
+        assignmentModal.style.display =
+            "none";
+
+        detailsModal.style.display =
+            "none";
+
+        historyModal.style.display =
+            "none";
+
+
+        /* SHOW LOGIN SCREEN */
+
+        authScreen.style.display =
+            "flex";
+    }
+);
+
+
+/* =========================
+   START APP
+========================= */
+
+renderAssignments();
+
+checkAuth();
