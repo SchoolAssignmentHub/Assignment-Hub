@@ -1056,13 +1056,13 @@ function renderAssignments() {
 
 
     renderSection(
-        "THIS WEEK",
+        "NEXT 7 DAYS",
         sections.thisWeek
     );
 
 
     renderSection(
-        "NEXT WEEK",
+        "NEXT 14 DAYS",
         sections.nextWeek
     );
 
