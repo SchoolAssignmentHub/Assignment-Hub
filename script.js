@@ -1820,78 +1820,83 @@ function celebrateSubmission() {
 let lastHoverSoundTime = 0;
 
 
-document.addEventListener(
-    "mouseover",
-    (event) => {
+/* Only enable hover sounds on devices with a real mouse */
 
-        const target =
-            event.target.closest(
-                "button, .assignment-card"
-            );
+const hasMouse =
+    window.matchMedia(
+        "(hover: hover) and (pointer: fine)"
+    ).matches;
 
 
-        if (!target) {
+if (hasMouse) {
 
-            return;
+    document.addEventListener(
+        "mouseover",
+        (event) => {
+
+            const target =
+                event.target.closest(
+                    "button, .assignment-card"
+                );
+
+
+            if (!target) {
+                return;
+            }
+
+
+            if (
+                target.dataset.hovered === "true"
+            ) {
+                return;
+            }
+
+
+            target.dataset.hovered =
+                "true";
+
+
+            const now =
+                Date.now();
+
+
+            if (
+                now - lastHoverSoundTime < 80
+            ) {
+                return;
+            }
+
+
+            lastHoverSoundTime =
+                now;
+
+
+            playHoverSound();
         }
+    );
 
 
-        if (
-            target.dataset.hovered ===
-            "true"
-        ) {
+    document.addEventListener(
+        "mouseout",
+        (event) => {
 
-            return;
+            const target =
+                event.target.closest(
+                    "button, .assignment-card"
+                );
+
+
+            if (!target) {
+                return;
+            }
+
+
+            target.dataset.hovered =
+                "false";
         }
+    );
 
-
-        target.dataset.hovered =
-            "true";
-
-
-        const now =
-            Date.now();
-
-
-        if (
-            now -
-            lastHoverSoundTime <
-            80
-        ) {
-
-            return;
-        }
-
-
-        lastHoverSoundTime =
-            now;
-
-
-        playHoverSound();
-    }
-);
-
-
-document.addEventListener(
-    "mouseout",
-    (event) => {
-
-        const target =
-            event.target.closest(
-                "button, .assignment-card"
-            );
-
-
-        if (!target) {
-
-            return;
-        }
-
-
-        target.dataset.hovered =
-            "false";
-    }
-);
+}
 
 
 /* =========================
