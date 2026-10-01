@@ -99,8 +99,6 @@ document.addEventListener(
 
 
 function playButtonSound() {
-
-    alert("sound function ran");
     const audio =
         getAudioContext();
 
